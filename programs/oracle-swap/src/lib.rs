@@ -13,7 +13,30 @@ pub mod oracle_swap {
     }
 
     pub fn swap(ctx: Context<Swap>, data: SwapArgs) -> Result<()> {
+        // first transfer sol from the signer account
         
+        let from_account = &ctx.accounts.admin
+        let to_account = &ctx.accounts.token_account_incoming
+
+        let sol_from_incoming_tx = solana_program::system_instruction::transfer(
+            &from_account.key(), &to_account.key(), data.amount_in
+        )
+
+        anchor_lang::solana_program::program::invoke_signed(
+            &sol_from_incoming_tx,
+            &[
+                from_account.to_account_info(),
+                to_account.clone(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+            &[]
+        )?;
+
+        let exchange_rate = 1; // will have to be changed based on oracle arguments
+        let final_amount = data.amount_in * (1 - (ctx.accounts.swap_metadata.discount_bps / 10000)) * exchange_rate
+
+        // need to transfer final_amount number of 2Z from the program's token account to the user's wallet.
+
     }
 }
 
@@ -57,6 +80,9 @@ pub struct Swap<'info> {
     #[account(seeds = [b"incoming", mint_incoming.key().as_ref()], bump)]
     pub token_account_incoming: InterfaceAccount<'info, TokenAccount>, // program's token account
 
+    // #[account(seeds = [b"wallet"], bump)]
+    // pub sol_wallet: InterfaceAccount<'info, TokenAccount>
+    
     #[account(seeds = [b"metadata", mint_incoming.key().as_ref()], bump)]
     pub swap_metadata: InterfaceAccount<'info, SwapMetadata>,
 
@@ -65,7 +91,7 @@ pub struct Swap<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Eq, PartialEq, Clone, Copy, Debug)]
 pub struct SwapArgs {
-    pub amount_in: u64, // the amount of SOL the user is sending in
+    pub amount_in: u64, // the amount of SOL the user is sending in, in lamports
     pub oracle_price: u64, // amount of 2Z per SOL
 }
 
