@@ -7,7 +7,10 @@ declare_id!("7vhGmaff6eXJHREo5RTPvEVUvbE6NySnLY7bjVgtPDj4");
 pub mod oracle_swap {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+    pub fn initialize(ctx: Context<Initialize>, data: InitializeArgs) -> Result<()> {
+        // 
+        ctx.swap_metadata.value = data
+        
         Ok(())
     }
 }
@@ -30,7 +33,8 @@ pub struct Initialize<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Eq, PartialEq, Clone, Copy, Debug)]
 pub struct InitializeArgs {
-    pub discount_bps: u16,
+    pub mint_incoming: Pubkey, // indicates the identity of the incoming token
+    pub discount_bps: u16, // indicates the discount applied to transactions
 }
 
 #[account]
