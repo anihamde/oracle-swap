@@ -19,17 +19,17 @@ pub mod oracle_swap {
 
         ctx.accounts.swap_metadata.admin = *ctx.accounts.admin.key;
         ctx.accounts.swap_metadata.mint_incoming = ctx.accounts.mint_incoming.key();
-        ctx.accounts.swap_metadata.pyth_feed_id = data.pyth_feed_id;
+        ctx.accounts.swap_metadata.feed_id_incoming = data.feed_id_incoming;
         ctx.accounts.swap_metadata.discount_bps = data.discount_bps;
         Ok(())
     }
 
     pub fn swap(ctx: Context<Swap>, data: SwapArgs) -> Result<()> {
-        let pyth_price = get_pyth_price_from_update(&mut ctx.accounts.price_update, ctx.accounts.swap_metadata.pyth_feed_id, MAXIMUM_AGE)?;
-        let price_sol = get_discounted_price(pyth_price, ctx.accounts.swap_metadata.discount_bps);
-        let price_incoming = 500u64;
+        let price_sol = get_pyth_price_from_update(&mut ctx.accounts.price_update_sol, SOL_FEED_ID, MAXIMUM_AGE)?;
+        let price_sol_discount = get_discounted_price(price_sol, ctx.accounts.swap_metadata.discount_bps);
+        let price_incoming = get_pyth_price_from_update(&mut ctx.accounts.price_update_incoming, ctx.accounts.swap_metadata.feed_id_incoming, MAXIMUM_AGE)?;
 
-        let sol_outgoing = data.amount_incoming * price_incoming / price_sol;
+        let sol_outgoing = data.amount_incoming * price_incoming / price_sol_discount;
 
         transfer_token_if_needed(
             &ctx.accounts.ta_swapper, 
@@ -46,6 +46,18 @@ pub mod oracle_swap {
             sol_outgoing,
         )?;
 
+        Ok(())
+    }
+
+    pub fn change_admin(ctx: Context<ChangeAdmin>) -> Result<()> {
+        ctx.accounts.swap_metadata.admin = ctx.accounts.new_admin.key();
+        Ok(())
+    }
+
+    pub fn change_discount_rate(ctx: Context<ChangeDiscountRate>, new_discount_rate_bps: u16) -> Result<()> {
+        validate_discount(new_discount_rate_bps)?;
+        
+        ctx.accounts.swap_metadata.discount_bps = new_discount_rate_bps;
         Ok(())
     }
 }
@@ -79,7 +91,7 @@ pub struct Initialize<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize, Eq, PartialEq, Clone, Copy, Debug)]
 pub struct InitializeArgs {
     pub discount_bps: u16,
-    pub pyth_feed_id: [u8; 32],
+    pub feed_id_incoming: [u8; 32],
 }
 
 #[derive(Accounts)]
@@ -107,7 +119,9 @@ pub struct Swap<'info> {
     #[account(constraint = mint_incoming.key() == swap_metadata.mint_incoming)]
     pub mint_incoming: InterfaceAccount<'info, Mint>,
 
-    pub price_update: Account<'info, PriceUpdateV2>,
+    pub price_update_sol: Account<'info, PriceUpdateV2>,
+
+    pub price_update_incoming: Account<'info, PriceUpdateV2>,
 
     #[account(seeds = [SEED_SWAP_METADATA], bump)]
     pub swap_metadata: Account<'info, SwapMetadata>,
@@ -118,4 +132,25 @@ pub struct Swap<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize, Eq, PartialEq, Clone, Copy, Debug)]
 pub struct SwapArgs {
     pub amount_incoming: u64,
+}
+
+#[derive(Accounts)]
+pub struct ChangeAdmin<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+
+    #[account(has_one = admin, seeds = [SEED_SWAP_METADATA], bump)]
+    pub swap_metadata: Account<'info, SwapMetadata>,
+
+    /// CHECK: WE DO NOT CARE WHAT KIND OF ACCOUNT NEW_ADMIN IS
+    pub new_admin: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ChangeDiscountRate<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+
+    #[account(has_one = admin, seeds = [SEED_SWAP_METADATA], bump)]
+    pub swap_metadata: Account<'info, SwapMetadata>,
 }
