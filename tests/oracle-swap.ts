@@ -5,7 +5,6 @@ import * as solanaWeb3 from "@solana/web3.js";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import * as splToken from "@solana/spl-token";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from "@solana/spl-token";
-import { Transaction } from "@solana/web3.js";
 import { PythSolanaReceiver } from "@pythnetwork/pyth-solana-receiver";
 const BN = require('bn.js');
 
@@ -30,7 +29,6 @@ describe("oracle-swap", () => {
   let taUser: PublicKey;
 
   before("setup", async () => {
-
     await airdropToAccount(connection, user.publicKey, solanaWeb3.LAMPORTS_PER_SOL)
     await airdropToAccount(connection, admin.publicKey, solanaWeb3.LAMPORTS_PER_SOL)
 
@@ -100,7 +98,7 @@ describe("oracle-swap", () => {
         mintIncoming: mint,
         tokenProgram: splToken.TOKEN_PROGRAM_ID,
       })
-      .signers([admin])
+      .signers([user])
       .rpc();
     await connection.confirmTransaction(sigSwap);
   })
