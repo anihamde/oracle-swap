@@ -60,6 +60,11 @@ pub mod oracle_swap {
         ctx.accounts.swap_metadata.discount_bps = new_discount_rate_bps;
         Ok(())
     }
+
+    pub fn test_swap(ctx: Context<TestSwap>, data: TestSwapArgs) -> Result<()> {
+        // TODO: FINISH THIS FUNCTION
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -153,4 +158,39 @@ pub struct ChangeDiscountRate<'info> {
 
     #[account(has_one = admin, seeds = [SEED_SWAP_METADATA], bump)]
     pub swap_metadata: Account<'info, SwapMetadata>,
+}
+
+#[derive(Accounts)]
+pub struct TestSwap<'info> {
+    #[account(mut)]
+    pub swapper: Signer<'info>,
+
+    #[account(
+        mut,
+        token::mint = mint_incoming,
+        token::authority = swapper,
+        token::token_program = token_program
+    )]
+    pub ta_swapper: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        associated_token::mint = mint_incoming,
+        associated_token::authority = swap_metadata,
+        associated_token::token_program = token_program,
+    )]
+    pub ta_program: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(constraint = mint_incoming.key() == swap_metadata.mint_incoming)]
+    pub mint_incoming: InterfaceAccount<'info, Mint>,
+
+    #[account(seeds = [SEED_SWAP_METADATA], bump)]
+    pub swap_metadata: Account<'info, SwapMetadata>,
+
+    pub token_program: Interface<'info, TokenInterface>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Eq, PartialEq, Clone, Copy, Debug)]
+pub struct TestSwapArgs {
+    pub amount_incoming: u64,
 }
