@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 use crate::error::ErrorCode;
+use anchor_spl::{associated_token::AssociatedToken, token_interface::{Mint, TokenAccount, TokenInterface}};
 
 pub fn validate_discount(discount_bps: u16) -> Result<()> {
     if discount_bps >= 10000 {
@@ -29,4 +30,24 @@ pub fn get_pyth_price_from_update(
         return Err(ErrorCode::InvalidPrice.into());
     }
     Ok(price as u64)
+}
+
+pub fn validate_funds(
+    from: &InterfaceAccount<'info, TokenAccount>,
+    to: &InterfaceAccount<'info, Account>,
+    incoming_funds: u64,
+    outgoing_funds: u64,
+) -> Result<()> {
+    let token_account_amount: u64 = from.amount;
+    let program_sol_amount: u64 = to.get_lamports();
+        
+    if token_account_amount < incoming_funds {
+        return Err(ErrorCode::InsufficientTokenFunds.into());
+    }
+
+    if program_sol_amount < outgoing_funds {
+        return Err(ErrorCode::InsufficientSwappingBalance.into());
+    }
+
+    Ok(());
 }

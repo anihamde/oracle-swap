@@ -2,6 +2,7 @@ pub mod state;
 pub mod error;
 pub mod utils;
 pub mod token;
+use crate::error::ErrorCode;
 
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token_interface::{Mint, TokenAccount, TokenInterface}};
@@ -63,6 +64,31 @@ pub mod oracle_swap {
 
     pub fn test_swap(ctx: Context<TestSwap>, data: TestSwapArgs) -> Result<()> {
         // TODO: FINISH THIS FUNCTION
+
+        let exchange_rate: u64 = 2; // (i.e. 2 token to SOL)
+        let discounted_rate: u64 = get_discounted_price(exchange_rate, ctx.accounts.swap_metadata.discount_bps);        
+
+        let token_account_amount: u64 = ctx.accounts.ta_swapper.amount;
+
+        let sol_outgoing = discounted_rate * token_account_amount;
+
+        validate_funds(*ctx.accounts.ta_swapper, ctx.accounts.swap_metadata, data.amount_incoming, sol_outgoing);
+
+        transfer_token_if_needed(
+            &ctx.accounts.ta_swapper, 
+            &ctx.accounts.ta_program, 
+            &ctx.accounts.token_program, 
+            &ctx.accounts.swapper, 
+            &ctx.accounts.mint_incoming, 
+            data.amount_incoming,
+        )?;
+
+        transfer_lamports(
+            &ctx.accounts.swap_metadata.to_account_info(), 
+            &ctx.accounts.swapper.to_account_info(), 
+            sol_outgoing,
+        )?;
+
         Ok(())
     }
 }

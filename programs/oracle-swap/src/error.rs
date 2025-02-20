@@ -6,4 +6,8 @@ pub enum ErrorCode {
     DiscountTooHigh,
     #[msg("Invalid price")]
     InvalidPrice,
+    #[msg("Insufficient incoming token")]
+    InsufficientTokenFunds,
+    #[msg("Insufficient SOL within swapper for swap")]
+    InsufficientSwappingBalance,
 }
