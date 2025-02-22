@@ -102,6 +102,24 @@ describe("oracle-swap", () => {
       .rpc();
     await connection.confirmTransaction(sigSwap);
   })
+
+  it("Can swap under test conditions", async() => {
+    const priceIncoming = new anchor.BN(99997515);
+    const priceSol = new anchor.BN(8465324343);
+
+    const sigTestSwap = await program.methods.testSwap({
+      amountIncoming: new anchor.BN(50),
+      solPrice: priceSol,
+      incomingPrice: priceIncoming,
+    }).accounts({
+      swapper: user.publicKey,
+        taSwapper: taUser,
+        mintIncoming: mint,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+    }).signers([user])
+    .rpc();
+
+  } )
 });
 
 
