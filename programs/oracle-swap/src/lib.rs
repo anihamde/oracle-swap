@@ -63,16 +63,13 @@ pub mod oracle_swap {
     }
 
     pub fn test_swap(ctx: Context<TestSwap>, data: TestSwapArgs) -> Result<()> {
-        // TODO: FINISH THIS FUNCTION
+        // let price_sol = get_pyth_price_from_update(&mut ctx.accounts.price_update_sol, SOL_FEED_ID, MAXIMUM_AGE)?
+        let price_sol = data.sol_price;
+        let price_sol_discount = get_discounted_price(price_sol, ctx.accounts.swap_metadata.discount_bps);
+        // let price_incoming = get_pyth_price_from_update(&mut ctx.accounts.price_update_incoming, ctx.accounts.swap_metadata.feed_id_incoming, MAXIMUM_AGE)?;
+        let price_incoming = data.incoming_price;
 
-        let exchange_rate: u64 = 2; // (i.e. 2 token to SOL)
-        let discounted_rate: u64 = get_discounted_price(exchange_rate, ctx.accounts.swap_metadata.discount_bps);        
-
-        let token_account_amount: u64 = ctx.accounts.ta_swapper.amount;
-
-        let sol_outgoing = discounted_rate * token_account_amount;
-
-        validate_funds(*ctx.accounts.ta_swapper, ctx.accounts.swap_metadata, data.amount_incoming, sol_outgoing);
+        let sol_outgoing = data.amount_incoming * price_incoming / price_sol_discount;
 
         transfer_token_if_needed(
             &ctx.accounts.ta_swapper, 
@@ -219,4 +216,6 @@ pub struct TestSwap<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize, Eq, PartialEq, Clone, Copy, Debug)]
 pub struct TestSwapArgs {
     pub amount_incoming: u64,
+    pub sol_price: u64,
+    pub incoming_price: u64
 }
